@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
 <title>ShowGate Control</title>
 <style>
   * { box-sizing: border-box; }
@@ -74,9 +77,11 @@
     <label>Schedule file path</label><input type="text" id="cfgPath" placeholder="schedule.json" />
     <label>GitHub token (fine-grained, Contents read/write on that repo)</label><input type="password" id="cfgToken" placeholder="github_pat_..." />
     <label>Your secret seed (same one in the app)</label><input type="password" id="cfgSecret" placeholder="paste secret" />
-    <button class="ghost" style="margin-top:12px;width:100%" onclick="saveConfig()">Save settings on this phone</button>
+    <button id="saveCfgBtn" class="ghost" style="margin-top:12px;width:100%" onclick="saveConfig()">Save settings on this phone</button>
     <p class="small">These are stored only in this phone's browser. Nothing is put in the page or the repo.</p>
   </details>
+
+  <p class="small" style="text-align:center;margin-top:16px">ShowGate Control · build 3</p>
 </div>
 
 <script>
@@ -527,15 +532,23 @@ function loadConfig() {
   el("cfgToken").value = C.token || "";
   el("cfgSecret").value = C.secret || "";
 }
-window.saveConfig = function(){
-  C = {
+// Read the current values straight from the input fields. We call this at the
+// moment of every action, so it never depends on a prior button press or on
+// localStorage working (some phone browsers block it).
+function readInputs(){
+  return {
     owner: el("cfgOwner").value.trim(), repo: el("cfgRepo").value.trim(),
     branch: (el("cfgBranch").value.trim() || "main"), path: (el("cfgPath").value.trim() || "schedule.json"),
     token: el("cfgToken").value.trim(), secret: el("cfgSecret").value.trim()
   };
+}
+window.saveConfig = function(){
+  C = readInputs();
   try { localStorage.setItem("sg_control", JSON.stringify(C)); } catch(e){}
   renderCodes(); pullFromGitHub();
   setStatus("Settings saved on this phone.", true);
+  var b = el("saveCfgBtn");
+  if (b){ var orig = b.textContent; b.textContent = "Saved \u2713"; setTimeout(function(){ b.textContent = orig; }, 1800); }
 };
 
 function setStatus(msg, ok){ var s=el("status"); s.className = ok?"ok":"err"; s.textContent = msg; }
@@ -568,6 +581,7 @@ window.removeDate = function(which,i){ (which==="allow"?allowDates:blockDates).s
 function todayStr(){ return core.localDateString(new Date()); }
 
 window.quick = function(which){
+  C = readInputs(); // make sure we have token/secret from the fields
   var t = todayStr();
   if (which==="unlock"){
     if (allowDates.indexOf(t)===-1) allowDates.push(t);
@@ -626,7 +640,14 @@ function pullFromGitHub(){
 }
 
 window.saveToGitHub = function(){
-  if (!C.owner || !C.repo || !C.token || !C.secret){ setStatus("Fill in Settings first (repo, token, secret).", false); return; }
+  C = readInputs(); // always use what's in the fields right now
+  try { localStorage.setItem("sg_control", JSON.stringify(C)); } catch(e){}
+  var missing = [];
+  if (!C.owner) missing.push("Owner");
+  if (!C.repo) missing.push("Repo");
+  if (!C.token) missing.push("Token");
+  if (!C.secret) missing.push("Secret");
+  if (missing.length){ setStatus("Missing in Settings: " + missing.join(", ") + ". Open ⚙️ Settings and fill these in.", false); return; }
   var payload = core.signSchedulePayload(C.secret, currentSchedule());
   var body = { message: "Update schedule "+new Date().toISOString(), content: b64encode(JSON.stringify(payload, null, 2)), branch: C.branch };
   if (fileSha) body.sha = fileSha;
@@ -642,6 +663,9 @@ window.saveToGitHub = function(){
     setStatus("Saved. His laptop will pick it up within a few minutes.", true);
   }).catch(function(e){ setStatus("Save failed: "+e.message, false); });
 };
+
+// Show today's code live as soon as a secret is typed (before saving).
+el("cfgSecret").addEventListener("input", function(){ C.secret = el("cfgSecret").value.trim(); renderCodes(); });
 
 // init
 loadConfig();
