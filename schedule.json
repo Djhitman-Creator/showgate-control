@@ -1,4 +1,4 @@
 {
-  "scheduleJson": "{\"requireCodeEveryNight\":false,\"lateNightGraceHours\":5,\"weeklyAllowed\":[],\"allowDates\":[\"2026-09-28\"],\"blockDates\":[]}",
-  "sig": "1fa0fc3c3b693bf5a5c827da823ad5bce7bc2b01558d139c1e127baa3095c099"
+  "scheduleJson": "{\"requireCodeEveryNight\":false,\"lateNightGraceHours\":5,\"weeklyAllowed\":[0,1,2,3,4,5,6],\"allowDates\":[\"2026-09-28\"],\"blockDates\":[]}",
+  "sig": "b8c639b0ef5c19050d913ab87457e90fa16d8c8e8314dda6ea177676931137ee"
 }
